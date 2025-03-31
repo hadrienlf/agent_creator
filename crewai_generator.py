@@ -1,14 +1,16 @@
 import os
 import sys
+import re
 from crewai import Agent, Task, Crew, Process
-from langchain_community.llms import OpenAI
-from langchain.tools import Tool
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper  # Ajouter cet import
+from langchain_openai import OpenAI
+from langchain.tools.base import BaseTool, Tool
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from typing import Any, Optional
 import json
 
 from dotenv import load_dotenv
 load_dotenv()
-
+    
 class CrewAIDocumentationExpert:
     def __init__(self, output_folder="./generated_crews"):
         """Initialise l'équipe d'agents qui utilise la documentation CrewAI pour créer des crews."""
@@ -32,20 +34,15 @@ class CrewAIDocumentationExpert:
 
     def _create_agents(self):
         """Crée les agents spécialisés."""
-        # Outils communs
-        search_tool = self._get_search_tool()
-        
-        # Agent spécialiste de la documentation CrewAI
+        # Agent spécialiste de la documentation CrewAI - sans outil personnalisé
         doc_specialist = Agent(
             role="Spécialiste de la documentation CrewAI",
             goal="Comprendre en profondeur la documentation de CrewAI et extraire les informations pertinentes",
             backstory="Vous êtes un expert qui a étudié en détail la documentation de CrewAI. "
-                     "Vous connaissez parfaitement la structure des agents, tâches, outils et crews. "
-                     "Votre expertise permet d'identifier rapidement les fonctionnalités pertinentes pour un cas d'usage.",
+                    "Vous pouvez vous rappeler des détails importants sur l'API et son utilisation.",
             verbose=True,
             allow_delegation=True,
-            llm=self.llm,
-            tools=[search_tool]
+            llm=self.llm
         )
         
         # Agent analyste des besoins
@@ -53,8 +50,8 @@ class CrewAIDocumentationExpert:
             role="Analyste des besoins utilisateur",
             goal="Analyser et comprendre précisément les besoins de l'utilisateur pour créer une crew adaptée",
             backstory="Vous êtes un expert en analyse des besoins avec une capacité exceptionnelle "
-                     "à comprendre ce que les utilisateurs veulent réellement accomplir. "
-                     "Vous transformez des descriptions vagues en spécifications précises.",
+                    "à comprendre ce que les utilisateurs veulent réellement accomplir. "
+                    "Vous transformez des descriptions vagues en spécifications précises.",
             verbose=True,
             allow_delegation=True,
             llm=self.llm
@@ -65,8 +62,8 @@ class CrewAIDocumentationExpert:
             role="Architecte de Crews",
             goal="Concevoir la structure optimale d'une crew pour répondre aux besoins spécifiques",
             backstory="Vous êtes un architecte créatif qui conçoit des équipes d'agents efficaces. "
-                     "Vous savez comment combiner différents types d'agents et structurer leurs interactions "
-                     "pour résoudre des problèmes complexes de manière optimale.",
+                    "Vous savez comment combiner différents types d'agents et structurer leurs interactions "
+                    "pour résoudre des problèmes complexes de manière optimale.",
             verbose=True,
             allow_delegation=True,
             llm=self.llm
@@ -77,8 +74,8 @@ class CrewAIDocumentationExpert:
             role="Développeur de code CrewAI",
             goal="Générer un code Python fonctionnel et bien structuré qui implémente la crew conçue",
             backstory="Vous êtes un développeur Python expérimenté spécialisé dans l'API CrewAI. "
-                     "Vous écrivez un code propre, bien documenté et facile à comprendre. "
-                     "Vous respectez les meilleures pratiques de programmation.",
+                    "Vous écrivez un code propre, bien documenté et facile à comprendre. "
+                    "Vous respectez les meilleures pratiques de programmation.",
             verbose=True,
             allow_delegation=True,
             llm=self.llm
@@ -90,6 +87,8 @@ class CrewAIDocumentationExpert:
             "crew_architect": crew_architect,
             "code_developer": code_developer
         }
+
+# Supprimer complètement la méthode _get_search_tool et la classe CrewAISearchTool
 
     def _create_tasks(self):
         """Crée les tâches pour les agents."""
@@ -170,22 +169,14 @@ class CrewAIDocumentationExpert:
         }
 
     def _get_search_tool(self):
-        """Crée un outil de recherche gratuit basé sur DuckDuckGo."""
-        try:
-            search = DuckDuckGoSearchAPIWrapper()
-            return Tool(
-                name="CrewAIDocumentation",
-                func=lambda query: search.run(f"CrewAI documentation {query}"),
-                description="Recherche des informations dans la documentation CrewAI. "
-                           "Utilise DuckDuckGo pour trouver des détails sur l'API."
-            )
-        except Exception as e:
-            print(f"Erreur lors de la création de l'outil de recherche: {e}")
-            return Tool(
-                name="CrewAIDocumentation",
-                func=lambda query: "Documentation CrewAI disponible sur: https://docs.crewai.com/",
-                description="Recherche des informations dans la documentation CrewAI."
-            )
+        """Crée un outil de recherche personnalisé."""
+        search = DuckDuckGoSearchAPIWrapper()
+        
+        return Tool(
+            name="CrewAIDocumentation",
+            description="Recherche des informations dans la documentation CrewAI",
+            func=lambda query: search.run(f"CrewAI documentation {query}")
+        )
 
     def create_custom_crew(self, user_need_description):
         """Crée une crew personnalisée basée sur la description des besoins utilisateur."""
@@ -246,7 +237,6 @@ class CrewAIDocumentationExpert:
     def _generate_project_name(self, description):
         """Génère un nom de projet à partir de la description."""
         # Extraire des mots-clés de la description
-        import re
         words = re.findall(r'\b[a-zA-Z]{3,}\b', description.lower())
         
         # Filtrer les mots communs
@@ -264,7 +254,6 @@ class CrewAIDocumentationExpert:
 
     def _extract_code_from_result(self, result):
         """Extrait les blocs de code Python du résultat."""
-        import re
         # Rechercher les blocs de code Python (entre ```python et ```)
         code_blocks = re.findall(r'```python\s*(.*?)\s*```', result, re.DOTALL)
         
