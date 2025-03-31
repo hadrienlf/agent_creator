@@ -3,7 +3,7 @@ import sys
 from crewai import Agent, Task, Crew, Process
 from langchain_community.llms import OpenAI
 from langchain.tools import Tool
-from langchain.utilities import GoogleSerperAPIWrapper
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper  # Ajouter cet import
 import json
 
 from dotenv import load_dotenv
@@ -170,22 +170,20 @@ class CrewAIDocumentationExpert:
         }
 
     def _get_search_tool(self):
-        """Crée un outil de recherche pour accéder à la documentation CrewAI."""
+        """Crée un outil de recherche gratuit basé sur DuckDuckGo."""
         try:
-            search = GoogleSerperAPIWrapper()
+            search = DuckDuckGoSearchAPIWrapper()
             return Tool(
                 name="CrewAIDocumentation",
                 func=lambda query: search.run(f"CrewAI documentation {query}"),
                 description="Recherche des informations dans la documentation CrewAI. "
-                           "Utilisez cet outil pour trouver des détails spécifiques sur l'API, "
-                           "les fonctionnalités ou les bonnes pratiques de CrewAI."
+                           "Utilise DuckDuckGo pour trouver des détails sur l'API."
             )
         except Exception as e:
             print(f"Erreur lors de la création de l'outil de recherche: {e}")
-            # Retourne un outil factice en cas d'erreur
             return Tool(
                 name="CrewAIDocumentation",
-                func=lambda query: "Pour utiliser cet outil, vous devez configurer votre clé API SERPER.",
+                func=lambda query: "Documentation CrewAI disponible sur: https://docs.crewai.com/",
                 description="Recherche des informations dans la documentation CrewAI."
             )
 
